@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-"""    Update HyperionNG direct from github actions    """	
+"""    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.0"
+__version__     = "1.1"
 __author__      = "schwatter"
-__date__        = "2024-12-26"
+__date__        = "2024-12-29"
 
 import os
 import requests
@@ -152,7 +152,7 @@ def install_file():
             deb_file_path = os.path.join("/tmp", selected_file)
             current_dir = os.getcwd()
             print "Stoppe HyperHdr"
-            os.system("/etc/init.d/hyperion stop")
+            os.system("/etc/init.d/hyperhdr stop")
             print "Installiere {}".format(deb_file_path)
             os.system("ar -x {}".format(deb_file_path))
             os.system("cp {}/data.tar.xz /tmp".format(current_dir))
