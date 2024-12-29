@@ -3,7 +3,7 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.1"
+__version__     = "1.2"
 __author__      = "schwatter"
 __date__        = "2024-12-29"
 
