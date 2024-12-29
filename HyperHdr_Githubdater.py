@@ -147,29 +147,38 @@ def install_file():
             print "Abgebrochen."
         elif 1 <= choice <= len(deb_files):
             selected_file = deb_files[choice - 1]
-            # Entpacken des Archives
+            print "Stoppe HyperHdr"
+            os.system("/etc/init.d/hyperion stop")
             deb_file_path = os.path.join("/tmp", selected_file)
             current_dir = os.getcwd()
-            print "Stoppe HyperHdr"
-            os.system("/etc/init.d/hyperhdr stop")
+            print "Erstelle Backup nach /usr/share/hyperhdr_s"
+            os.system("rm -rf /usr/share/hyperhdr_s")
+            os.system("mkdir /usr/share/hyperhdr_s")
+            os.system("cp -r /usr/share/hyperhdr /usr/share/hyperhdr_s")
             print "Installiere {}".format(deb_file_path)
             os.system("ar -x {}".format(deb_file_path))
-            os.system("cp {}/data.tar.xz /tmp".format(current_dir))
+            if current_dir == "/var/volatile/tmp" or current_dir == "/tmp":
+               pass
+            else:
+			   os.system("cp {}/data.tar.xz /tmp".format(current_dir))
             os.system("rm -rf control.tar.gz")
             os.system("rm -rf debian-binary")
-            os.system("rm -rf data.tar.xz")
+            if current_dir == "/var/volatile/tmp" or current_dir == "/tmp":
+               pass
+            else:
+                os.system("rm -rf data.tar.xz")
             os.system("tar -xf /tmp/data.tar.xz -C /tmp")
             # Entfernen des alten Verzeichnisses und Kopieren des neuen
             os.system("rm -rf /usr/share/hyperhdr")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
             # Prüfung, ob die Datei vorhanden ist
-            lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
-            if os.path.exists(lib_path):
-                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
-            else:
-                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
-                os.system("cp /home/libgpg-error.so.0 /usr/share/hyperhdr/lib/external")
-            print "Installation abgeschlossen. Bitte mache einen vollstaendigen Neustart."
+            #lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
+            #if os.path.exists(lib_path):
+            #    print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
+            #else:
+            #    print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
+            #    os.system("cp /home/libgpg-error.so.0 /usr/share/hyperhdr/lib/external")
+            print "Installation abgeschlossen. Vollstaendiger Neustart notwendig."
             os.system("rm -rf /tmp/data.tar.xz")
             os.system("rm -rf /tmp/Linux-bookworm-arm-32bit-armv6l-installer.zip")
             os.system("rm -rf /tmp/usr")
