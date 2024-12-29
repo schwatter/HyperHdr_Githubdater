@@ -11,7 +11,6 @@ import os
 import requests
 from bs4 import BeautifulSoup
 import zipfile
-import time
 
 # GitHub-Token (ersetze durch deinen persönlichen Token mit Zugriff auf öffentliche Repos)
 TOKEN = "ghp_yourToken"
