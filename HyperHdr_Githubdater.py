@@ -3,27 +3,32 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.4"
+__version__     = "1.5"
 __author__      = "schwatter"
-__date__        = "2024-12-29"
+__date__        = "2025-01-01"
 
 import os
 import requests
+import subprocess
 import zipfile
 
 package_bs4 = "python-beautifulsoup4"
 try:
     from bs4 import BeautifulSoup
-    print "python-beautifulsoup4 is installed"
+    print "python-beautifulsoup4 is already installed"
 except ImportError:
     os.system("opkg install "+ package_bs4)
     print "bs4-install finished"
     from bs4 import BeautifulSoup
-	
+
 package_xz = "xz"
+package_pr = subprocess.check_output(["opkg", "status", "xz"])
 try:
-    print "install xz"
-    os.system("opkg install "+ package_xz)
+    if package_pr == "":
+        print "install xz"
+        os.system("opkg install "+ package_xz)
+    else:
+        print "xz is already installed"
 except Exception, e:
       print e
 
@@ -185,8 +190,8 @@ def install_file():
             os.system("tar -xf /tmp/data.tar.xz -C /tmp")
             # Entfernen des alten Verzeichnisses und Kopieren des neuen
             os.system("rm -rf /usr/share/hyperhdr")
+            os.system("cp -r /tmp/usr/bin/hyperhdr /usr/bin")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
-            os.system("ln -s /usr/share/hyperhdr/bin/hyperhdr /usr/bin/hyperhdr")
             # Prüfung, ob die Datei vorhanden ist
             lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
             if os.path.exists(lib_path):
