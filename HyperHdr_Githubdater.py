@@ -180,12 +180,12 @@ def install_file():
             os.system("rm -rf /usr/share/hyperhdr")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
             # Prüfung, ob die Datei vorhanden ist
-            #lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
-            #if os.path.exists(lib_path):
-            #    print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
-            #else:
-            #    print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
-            #    os.system("cp /home/libgpg-error.so.0 /usr/share/hyperhdr/lib/external")
+            lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
+            if os.path.exists(lib_path):
+                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
+            else:
+                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
+                os.system("cp /home/libgpg-error.so.0 /usr/share/hyperhdr/lib/external")
             print "Installation abgeschlossen. Vollstaendiger Neustart notwendig."
             os.system("rm -rf /tmp/data.tar.xz")
             os.system("rm -rf /tmp/Linux-bookworm-arm-32bit-armv6l-installer.zip")
