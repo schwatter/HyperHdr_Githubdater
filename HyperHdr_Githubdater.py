@@ -3,7 +3,7 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.3"
+__version__     = "1.4"
 __author__      = "schwatter"
 __date__        = "2024-12-29"
 
@@ -11,14 +11,21 @@ import os
 import requests
 import zipfile
 
-package = "python-beautifulsoup4"
+package_bs4 = "python-beautifulsoup4"
 try:
     from bs4 import BeautifulSoup
     print "python-beautifulsoup4 is installed"
 except ImportError:
-    os.system("opkg install "+ package)
-    print "Install finished"
+    os.system("opkg install "+ package_bs4)
+    print "bs4-install finished"
     from bs4 import BeautifulSoup
+	
+package_xz = "xz"
+try:
+    print "install xz"
+    os.system("opkg install "+ package_xz)
+except Exception, e:
+      print e
 
 # GitHub-Token (ersetze durch deinen persönlichen Token mit Zugriff auf öffentliche Repos)
 TOKEN = "ghp_yourToken"
@@ -179,6 +186,7 @@ def install_file():
             # Entfernen des alten Verzeichnisses und Kopieren des neuen
             os.system("rm -rf /usr/share/hyperhdr")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
+            os.system("ln -s /usr/share/hyperhdr/bin/hyperhdr /usr/bin/hyperhdr")
             # Prüfung, ob die Datei vorhanden ist
             lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
             if os.path.exists(lib_path):
