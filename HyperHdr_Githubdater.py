@@ -3,14 +3,22 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.2"
+__version__     = "1.3"
 __author__      = "schwatter"
 __date__        = "2024-12-29"
 
 import os
 import requests
-from bs4 import BeautifulSoup
 import zipfile
+
+package = "python-beautifulsoup4"
+try:
+    from bs4 import BeautifulSoup
+    print "python-beautifulsoup4 is installed"
+except ImportError:
+    os.system("opkg install "+ package)
+    print "Install finished"
+    from bs4 import BeautifulSoup
 
 # GitHub-Token (ersetze durch deinen persönlichen Token mit Zugriff auf öffentliche Repos)
 TOKEN = "ghp_yourToken"
