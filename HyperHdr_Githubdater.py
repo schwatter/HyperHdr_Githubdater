@@ -3,9 +3,9 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.5"
+__version__     = "1.6"
 __author__      = "schwatter"
-__date__        = "2025-01-01"
+__date__        = "2025-09-06"
 
 import os
 import requests
@@ -40,7 +40,7 @@ BASE_URL = "https://github.com"
 ACTIONS_URL = "https://github.com/awawa-dev/HyperHDR/actions"
 MAX_PAGES = 2  # Maximale Anzahl der Seiten, die durchsucht werden
 MAX_DOWNLOADS = 5  # Maximale Anzahl an Downloads, die gesucht werden
-artifact_name = "Linux-bookworm-arm-32bit-armv6l-installer"  # Name des gesuchten Artifacts
+artifact_name = "Linux-armhf-debian-bookworm-installer"  # Name des gesuchten Artifacts
 
 # Header für die GitHub-API-Anfragen
 HEADERS = {
@@ -199,6 +199,25 @@ def install_file():
             else:
                 print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
                 os.system("cp /home/libgpg-error.so.0 /usr/share/hyperhdr/lib/external")
+
+            lib_path = "/usr/share/hyperhdr/lib/external/libbrotlienc.so.1"
+            if os.path.exists(lib_path):
+                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
+            else:
+                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
+                os.system("cp /home/libbrotlienc.so.1 /usr/share/hyperhdr/lib/external")
+            lib_path = "/usr/share/hyperhdr/lib/external/libbrotlicommon.so.1"
+            if os.path.exists(lib_path):
+                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
+            else:
+                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
+                os.system("cp /home/libbrotlicommon.so.1 /usr/share/hyperhdr/lib/external")
+            lib_path = "/usr/share/hyperhdr/lib/external/libbrotlidec.so.1"
+            if os.path.exists(lib_path):
+                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
+            else:
+                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
+                os.system("cp /home/libbrotlidec.so.1 /usr/share/hyperhdr/lib/external")
             print "Installation abgeschlossen. Vollstaendiger Neustart notwendig."
             os.system("rm -rf /tmp/data.tar.xz")
             os.system("rm -rf /tmp/Linux-bookworm-arm-32bit-armv6l-installer.zip")
