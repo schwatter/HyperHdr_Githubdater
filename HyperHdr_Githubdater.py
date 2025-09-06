@@ -3,7 +3,7 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.6"
+__version__     = "1.7"
 __author__      = "schwatter"
 __date__        = "2025-09-06"
 
@@ -148,6 +148,15 @@ def extract_zip(zip_file):
     except Exception as e:
         print("Fehler beim Entpacken der ZIP-Datei: {}".format(e))
 
+# Hilfsfunktion: Datei prüfen und ggf. von GitHub laden
+def download_if_missing(lib_name, url):
+    lib_path = "/usr/share/hyperhdr/lib/external/{}".format(lib_name)
+    if os.path.exists(lib_path):
+        print "Die Datei {} ist bereits vorhanden. Kein Download erforderlich.".format(lib_path)
+    else:
+        print "Die Datei {} ist nicht vorhanden. Lade von GitHub herunter.".format(lib_path)
+        os.system("wget -q -O {} {}".format(lib_path, url))
+
 # Funktion zum Entpacken und Installieren des Archivs
 def install_file():
     # Suchen nach *.deb-Dateien in /tmp
@@ -178,13 +187,13 @@ def install_file():
             print "Installiere {}".format(deb_file_path)
             os.system("ar -x {}".format(deb_file_path))
             if current_dir == "/var/volatile/tmp" or current_dir == "/tmp":
-               pass
+                pass
             else:
-			   os.system("cp {}/data.tar.xz /tmp".format(current_dir))
+                os.system("cp {}/data.tar.xz /tmp".format(current_dir))
             os.system("rm -rf control.tar.gz")
             os.system("rm -rf debian-binary")
             if current_dir == "/var/volatile/tmp" or current_dir == "/tmp":
-               pass
+                pass
             else:
                 os.system("rm -rf data.tar.xz")
             os.system("tar -xf /tmp/data.tar.xz -C /tmp")
@@ -192,32 +201,25 @@ def install_file():
             os.system("rm -rf /usr/share/hyperhdr")
             os.system("cp -r /tmp/usr/bin/hyperhdr /usr/bin")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
-            # Prüfung, ob die Datei vorhanden ist
-            lib_path = "/usr/share/hyperhdr/lib/external/libgpg-error.so.0"
-            if os.path.exists(lib_path):
-                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
-            else:
-                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
-                os.system("cp /home/libgpg-error.so.0 /usr/share/hyperhdr/lib/external")
 
-            lib_path = "/usr/share/hyperhdr/lib/external/libbrotlienc.so.1"
-            if os.path.exists(lib_path):
-                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
-            else:
-                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
-                os.system("cp /home/libbrotlienc.so.1 /usr/share/hyperhdr/lib/external")
-            lib_path = "/usr/share/hyperhdr/lib/external/libbrotlicommon.so.1"
-            if os.path.exists(lib_path):
-                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
-            else:
-                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
-                os.system("cp /home/libbrotlicommon.so.1 /usr/share/hyperhdr/lib/external")
-            lib_path = "/usr/share/hyperhdr/lib/external/libbrotlidec.so.1"
-            if os.path.exists(lib_path):
-                print "Die Datei {} ist bereits vorhanden. Kein Kopieren erforderlich.".format(lib_path)
-            else:
-                print "Die Datei {} ist nicht vorhanden. Kopiere von /home.".format(lib_path)
-                os.system("cp /home/libbrotlidec.so.1 /usr/share/hyperhdr/lib/external")
+            # Statt /home jetzt GitHub-Download nutzen
+            download_if_missing(
+                "libgpg-error.so.0",
+                "https://github.com/schwatter/HyperHdr_Githubdater/raw/refs/heads/main/libgpg-error.so.0"
+            )
+            download_if_missing(
+                "libbrotlienc.so.1",
+                "https://github.com/schwatter/HyperHdr_Githubdater/raw/refs/heads/main/libbrotlienc.so.1"
+            )
+            download_if_missing(
+                "libbrotlicommon.so.1",
+                "https://github.com/schwatter/HyperHdr_Githubdater/raw/refs/heads/main/libbrotlicommon.so.1"
+            )
+            download_if_missing(
+                "libbrotlidec.so.1",
+                "https://github.com/schwatter/HyperHdr_Githubdater/raw/refs/heads/main/libbrotlidec.so.1"
+            )
+
             print "Installation abgeschlossen. Vollstaendiger Neustart notwendig."
             os.system("rm -rf /tmp/data.tar.xz")
             os.system("rm -rf /tmp/Linux-bookworm-arm-32bit-armv6l-installer.zip")
