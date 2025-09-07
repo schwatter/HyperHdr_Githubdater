@@ -177,7 +177,7 @@ def install_file():
         elif 1 <= choice <= len(deb_files):
             selected_file = deb_files[choice - 1]
             print "Stoppe HyperHdr"
-            os.system("/etc/init.d/hyperion stop")
+            os.system("/etc/init.d/hyperhdr stop")
             deb_file_path = os.path.join("/tmp", selected_file)
             current_dir = os.getcwd()
             print "Erstelle Backup nach /usr/share/hyperhdr_s"
