@@ -3,9 +3,9 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.7"
+__version__     = "1.8"
 __author__      = "schwatter"
-__date__        = "2025-09-06"
+__date__        = "2025-09-08"
 
 import os
 import requests
@@ -40,7 +40,7 @@ BASE_URL = "https://github.com"
 ACTIONS_URL = "https://github.com/awawa-dev/HyperHDR/actions"
 MAX_PAGES = 2  # Maximale Anzahl der Seiten, die durchsucht werden
 MAX_DOWNLOADS = 5  # Maximale Anzahl an Downloads, die gesucht werden
-artifact_name = "Linux-armhf-debian-bookworm-installer"  # Name des gesuchten Artifacts
+artifact_name = "Linux-armhf-debian-bullseye-installer"  # Name des gesuchten Artifacts
 
 # Header für die GitHub-API-Anfragen
 HEADERS = {
@@ -184,6 +184,7 @@ def install_file():
             os.system("rm -rf /usr/share/hyperhdr_s")
             os.system("mkdir /usr/share/hyperhdr_s")
             os.system("cp -r /usr/share/hyperhdr /usr/share/hyperhdr_s")
+			os.system("cp -r /tmp/usr/share/hyperhdr/scripts /tmp")
             print "Installiere {}".format(deb_file_path)
             os.system("ar -x {}".format(deb_file_path))
             if current_dir == "/var/volatile/tmp" or current_dir == "/tmp":
@@ -201,6 +202,7 @@ def install_file():
             os.system("rm -rf /usr/share/hyperhdr")
             os.system("cp -r /tmp/usr/bin/hyperhdr /usr/bin")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
+			os.system("cp -r /tmp/scripts /tmp/usr/share/hyperhdr")
 
             # Statt /home jetzt GitHub-Download nutzen
             download_if_missing(
@@ -222,7 +224,8 @@ def install_file():
 
             print "Installation abgeschlossen. Vollstaendiger Neustart notwendig."
             os.system("rm -rf /tmp/data.tar.xz")
-            os.system("rm -rf /tmp/Linux-bookworm-arm-32bit-armv6l-installer.zip")
+            os.system("rm -rf /tmp/Linux-bullseye-arm-32bit-armv6l-installer.zip")
+			os.system("rm -rf /tmp/scripts")
             os.system("rm -rf /tmp/usr")
         else:
             print "Ungueltige Auswahl."
