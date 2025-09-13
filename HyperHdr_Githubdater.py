@@ -3,13 +3,14 @@
 """    Update HyperHdr direct from github actions    """	
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "1.8"
+__version__     = "1.9"
 __author__      = "schwatter"
-__date__        = "2025-09-08"
+__date__        = "2025-09-13"
 
 import os
 import requests
 import subprocess
+import time
 import zipfile
 
 package_bs4 = "python-beautifulsoup4"
@@ -184,7 +185,6 @@ def install_file():
             os.system("rm -rf /usr/share/hyperhdr_s")
             os.system("mkdir /usr/share/hyperhdr_s")
             os.system("cp -r /usr/share/hyperhdr /usr/share/hyperhdr_s")
-			os.system("cp -r /tmp/usr/share/hyperhdr/scripts /tmp")
             print "Installiere {}".format(deb_file_path)
             os.system("ar -x {}".format(deb_file_path))
             if current_dir == "/var/volatile/tmp" or current_dir == "/tmp":
@@ -199,10 +199,11 @@ def install_file():
                 os.system("rm -rf data.tar.xz")
             os.system("tar -xf /tmp/data.tar.xz -C /tmp")
             # Entfernen des alten Verzeichnisses und Kopieren des neuen
+            os.system("cp -r /usr/share/hyperhdr/scripts /tmp")
             os.system("rm -rf /usr/share/hyperhdr")
             os.system("cp -r /tmp/usr/bin/hyperhdr /usr/bin")
             os.system("cp -r /tmp/usr/share/hyperhdr /usr/share")
-			os.system("cp -r /tmp/scripts /tmp/usr/share/hyperhdr")
+            os.system("cp -r /tmp/scripts /usr/share/hyperhdr")
 
             # Statt /home jetzt GitHub-Download nutzen
             download_if_missing(
@@ -222,11 +223,23 @@ def install_file():
                 "https://github.com/schwatter/HyperHdr_Githubdater/raw/refs/heads/main/libbrotlidec.so.1"
             )
 
-            print "Installation abgeschlossen. Vollstaendiger Neustart notwendig."
+            print "Installation abgeschlossen."
             os.system("rm -rf /tmp/data.tar.xz")
-            os.system("rm -rf /tmp/Linux-bullseye-arm-32bit-armv6l-installer.zip")
-			os.system("rm -rf /tmp/scripts")
+            os.system("rm -rf /tmp/HyperHDR-22.0.0~bullseye~beta0-aarch64.deb")
+            os.system("rm -rf /tmp/Linux-armhf-debian-bullseye-installer.zip")
+            os.system("rm -rf /tmp/scripts")
             os.system("rm -rf /tmp/usr")
+            os.system("touch /usr/share/hyperhdr/scripts/state")
+            os.system("echo 1 > /usr/share/hyperhdr/scripts/state")
+            time.sleep(2) 
+            os.system(" /etc/init.d/hyperhdr status")
+            os.system(" /etc/init.d/hyperhdr start &")
+            print "Kurzer Test."
+            time.sleep(20)
+            # os.system(" /etc/init.d/hyperhdr stop")
+            print "Reboot"
+            time.sleep(2)
+            os.system("reboot")
         else:
             print "Ungueltige Auswahl."
     except ValueError:
