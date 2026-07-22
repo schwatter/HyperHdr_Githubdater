@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
-"""    Update HyperHdr direct from github actions    """	
+"""     Update HyperHdr direct from github actions     """    
 
 __progname__    = "HyperHdr_Githubdater"
-__version__     = "2.0"
+__version__     = "2.2"
 __author__      = "schwatter"
-__date__        = "2026-06-28"
+__date__        = "2026-07-22"
 
 import os
 import requests
@@ -34,13 +34,13 @@ except Exception, e:
       print e
 
 # GitHub-Token (ersetze durch deinen persönlichen Token mit Zugriff auf öffentliche Repos)
-TOKEN = "ghp_yourToken"
+TOKEN = "token"
 
 # URL der GitHub-Actions-Seite
 BASE_URL = "https://github.com"
 ACTIONS_URL = "https://github.com/awawa-dev/HyperHDR/actions"
 MAX_PAGES = 2  # Maximale Anzahl der Seiten, die durchsucht werden
-MAX_DOWNLOADS = 5  # Maximale Anzahl an Downloads, die gesucht werden
+MAX_DOWNLOADS = 10  # Maximale Anzahl an Downloads, die gesucht werden
 artifact_name = "Linux-armhf-debian-bullseye-installer"  # Name des gesuchten Artifacts
 
 # Header für die GitHub-API-Anfragen
@@ -53,7 +53,7 @@ HEADERS = {
 def get_workflow_links(page_url):
     response = requests.get(page_url)
     if response.status_code != 200:
-        print("Fehler beim Abrufen der Seite:", response.status_code)
+        print "Fehler beim Abrufen der Seite: {}".format(response.status_code)
         return []
 
     soup = BeautifulSoup(response.text, "html.parser")
@@ -70,21 +70,6 @@ def get_workflow_links(page_url):
     
     # Rückgabe der Liste der Links ohne Duplikate
     return workflow_links
-
-
-# Funktion zum Prüfen eines Workflow-Runs auf das spezifische Artifact
-def check_artifact(run_url, artifact_name):
-    print("Pruefe Workflow: {}".format(run_url))
-    response = requests.get(run_url)
-    if response.status_code != 200:
-        print("Fehler beim Abrufen der Workflow-Seite: {}".format(response.status_code))
-        return False
-
-    # Nach dem Suchbegriff suchen
-    if artifact_name in response.text:
-        print("Suchbegriff '{}' gefunden auf der Seite: {}".format(artifact_name, run_url))
-        return True
-    return False
 
 # Funktion zum Prüfen eines Workflow-Runs auf das spezifische Artifact
 def check_artifact(run_url, artifact_name):
@@ -132,11 +117,11 @@ def download_artifact(owner, repo, run_id, artifact_name):
 # Funktion zum Entpacken der ZIP-Datei
 def extract_zip(zip_file):
     try:
-        print("Entpacke ZIP-Datei: {}".format(zip_file))
+        print "Entpacke ZIP-Datei: {}".format(zip_file)
         
         # Überprüfen, ob die ZIP-Datei existiert
         if not os.path.exists(zip_file):
-            print("Die Datei {} existiert nicht.".format(zip_file))
+            print "Die Datei {} existiert nicht.".format(zip_file)
             return
 
         # Öffnen der ZIP-Datei und Entpacken
@@ -145,9 +130,9 @@ def extract_zip(zip_file):
         zip_ref.extractall("/tmp")
         zip_ref.close()
         
-        print("ZIP-Datei erfolgreich entpackt.")
-    except Exception as e:
-        print("Fehler beim Entpacken der ZIP-Datei: {}".format(e))
+        print "ZIP-Datei erfolgreich entpackt."
+    except Exception, e:
+        print "Fehler beim Entpacken der ZIP-Datei: {}".format(e)
 
 # Hilfsfunktion: Datei prüfen und ggf. von GitHub laden
 def download_if_missing(lib_name, url):
@@ -185,33 +170,42 @@ def install_file():
             os.system("cp -r /usr/share/hyperhdr /usr/share/hyperhdr_s")
 
             print "Installiere {}".format(deb_file_path)
-            os.system("ar -x {}".format(deb_file_path))
-            os.system("tar -xf data.tar.xz -C /tmp")
+            
+            # --- DEBUG BLOCK START ---
+            print "[DEBUG] Wechsle in das /tmp Verzeichnis..."
+            os.chdir("/tmp")
+            
+            print "[DEBUG] Räume alte ar/tar Reste auf..."
+            os.system("rm -f debian-binary control.tar.* data.tar.*")
+            
+            print "[DEBUG] Führe ar -x auf {} aus...".format(selected_file)
+            ar_code = os.system("ar -x {}".format(selected_file))
+            print "[DEBUG] ar Exit-Code: {}".format(ar_code)
+            
+            print "[DEBUG] Inhalt von /tmp nach ar:"
+            os.system("ls -la /tmp | grep -E 'data.tar|control.tar|debian-binary'")
+            
+            print "[DEBUG] Entpacke data.tar.* direkt ins System (/) mit Debug-Ausgabe (-v)..."
+            tar_code = os.system("tar -xvf data.tar.* -C /")
+            print "[DEBUG] tar Exit-Code: {}".format(tar_code)
+            
+            print "[DEBUG] Prüfe ob /usr/bin/hyperhdr existiert: {}".format(os.path.exists("/usr/bin/hyperhdr"))
+            # --- DEBUG BLOCK ENDE ---
 
             # Sicherung der eigenen Scripts
             if os.path.exists("/usr/share/hyperhdr/scripts"):
+                print "[DEBUG] Sichere eigene Scripts..."
                 os.system("cp -r /usr/share/hyperhdr/scripts /tmp/scripts_backup")
-
-            # Aufräumen & Installation der neuen Struktur
-            os.system("rm -rf /usr/share/hyperhdr /usr/lib/arm-linux-gnueabihf/hyperhdr")
-            os.system("mkdir -p /usr/bin /usr/share/hyperhdr /usr/lib/arm-linux-gnueabihf/hyperhdr")
-            
-            os.system("cp -f /tmp/usr/bin/hyperhdr /usr/bin/")
-            os.system("cp -rf /tmp/usr/share/hyperhdr/* /usr/share/hyperhdr/")
-            os.system("cp -rf /tmp/usr/lib/arm-linux-gnueabihf/hyperhdr/* /usr/lib/arm-linux-gnueabihf/hyperhdr/")
 
             # Scripts wiederherstellen
             if os.path.exists("/tmp/scripts_backup"):
+                print "[DEBUG] Stelle eigene Scripts wieder her..."
                 os.system("cp -r /tmp/scripts_backup /usr/share/hyperhdr/scripts")
-
-            # Externe Libs
-            libs = ["libgpg-error.so.0", "libbrotlienc.so.1", "libbrotlicommon.so.1", "libbrotlidec.so.1"]
-            for lib in libs:
-                download_if_missing(lib, "https://github.com/schwatter/HyperHdr_Githubdater/raw/refs/heads/main/{}".format(lib))
+                os.system("rm -rf /tmp/scripts_backup")
 
             print "Installation abgeschlossen."
             # Cleanup
-            os.system("rm -rf /tmp/data.tar.xz /tmp/control.tar.gz /tmp/debian-binary /tmp/usr /tmp/scripts_backup /tmp/*.deb")
+            os.system("rm -rf /tmp/data.tar.* /tmp/control.tar.* /tmp/debian-binary /tmp/scripts_backup /tmp/*.deb")
             
             os.system("touch /usr/share/hyperhdr/scripts/state && echo 1 > /usr/share/hyperhdr/scripts/state")
             
