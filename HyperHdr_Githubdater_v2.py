@@ -2,16 +2,15 @@
 
 """     Update HyperHdr direct from github actions     """    
 
-__progname__    = "HyperHdr_Githubdater"
-__version__     = "2.2"
+__progname__    = "HyperHdr_Githubdater V2"
+__version__     = "2.3"
 __author__      = "schwatter"
-__date__        = "2026-07-22"
+__date__        = "2026-09-28"
 
 import os
 import requests
 import subprocess
 import time
-import zipfile
 
 package_bs4 = "python-beautifulsoup4"
 try:
@@ -34,14 +33,14 @@ except Exception, e:
       print e
 
 # GitHub-Token (ersetze durch deinen persönlichen Token mit Zugriff auf öffentliche Repos)
-TOKEN = "token"
+TOKEN = "yourSecretToken"
 
 # URL der GitHub-Actions-Seite
 BASE_URL = "https://github.com"
 ACTIONS_URL = "https://github.com/awawa-dev/HyperHDR/actions"
 MAX_PAGES = 2  # Maximale Anzahl der Seiten, die durchsucht werden
 MAX_DOWNLOADS = 10  # Maximale Anzahl an Downloads, die gesucht werden
-artifact_name = "Linux-armhf-debian-bullseye-installer"  # Name des gesuchten Artifacts
+artifact_name = "HyperHDR-24.0.0~bookworm~beta0-armhf.deb"  # Name des gesuchten Artifacts
 
 # Header für die GitHub-API-Anfragen
 HEADERS = {
@@ -101,38 +100,17 @@ def download_artifact(owner, repo, run_id, artifact_name):
             if download_url:
                 download_response = requests.get(download_url, headers=HEADERS)
                 if download_response.status_code == 200:
-                    # Speichern im /tmp Verzeichnis
-                    file_name = "/tmp/{}.zip".format(artifact_name)
+                    # Speichern im /tmp Verzeichnis (direkt als deb, ohne .zip)
+                    file_name = "/tmp/{}".format(artifact_name)
                     with open(file_name, "wb") as f:
                         f.write(download_response.content)
                     print "Artifact wurde erfolgreich heruntergeladen: {}".format(file_name)
-                    extract_zip(file_name)  # ZIP entpacken
                 else:
                     print "Fehler beim Herunterladen des Artifacts: {}".format(download_response.status_code)
             else:
                 print "Keine gueltige Download-URL gefunden."
             return
     print "Kein Artifact mit dem Namen '{}' gefunden.".format(artifact_name)
-
-# Funktion zum Entpacken der ZIP-Datei
-def extract_zip(zip_file):
-    try:
-        print "Entpacke ZIP-Datei: {}".format(zip_file)
-        
-        # Überprüfen, ob die ZIP-Datei existiert
-        if not os.path.exists(zip_file):
-            print "Die Datei {} existiert nicht.".format(zip_file)
-            return
-
-        # Öffnen der ZIP-Datei und Entpacken
-        zip_ref = zipfile.ZipFile(zip_file, 'r')
-        # Entpacken in das /tmp Verzeichnis
-        zip_ref.extractall("/tmp")
-        zip_ref.close()
-        
-        print "ZIP-Datei erfolgreich entpackt."
-    except Exception, e:
-        print "Fehler beim Entpacken der ZIP-Datei: {}".format(e)
 
 # Hilfsfunktion: Datei prüfen und ggf. von GitHub laden
 def download_if_missing(lib_name, url):
