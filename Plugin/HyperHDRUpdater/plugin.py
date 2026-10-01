@@ -1,32 +1,34 @@
 # -*- coding: utf-8 -*-
+import os
+import requests
+import subprocess
+import threading
 from Plugins.Plugin import PluginDescriptor
 from Screens.Screen import Screen
 from Screens.MessageBox import MessageBox
 from Components.ActionMap import ActionMap
 from Components.Label import Label
 from Components.MenuList import MenuList
-import os
-import requests
-import subprocess
 
-# BeautifulSoup laden/prüfen
 try:
     from bs4 import BeautifulSoup
 except ImportError:
-    os.system("opkg update && opkg install python-beautifulsoup4")
-    from bs4 import BeautifulSoup
+    BeautifulSoup = None
 
-# --- Einstellungen ---
-TOKEN = ""  # Dein GitHub Personal Access Token
+TOKEN = ""  # Dein GitHub Personal Access Token (falls privat)
 BASE_URL = "https://github.com"
 ACTIONS_URL = "https://github.com/awawa-dev/HyperHDR/actions"
 ARTIFACT_NAME = "HyperHDR-24.0.0~bookworm~beta0-armhf.deb"
 
 HEADERS = {
-    "Authorization": "Bearer {}".format(TOKEN),
+    "Authorization": "Bearer {}".format(TOKEN) if TOKEN else "",
     "Accept": "application/vnd.github.v3+json",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 }
+
+if not TOKEN:
+    HEADERS.pop("Authorization", None)
+
 
 class HyperHdrUpdaterScreen(Screen):
     skin = """
@@ -34,15 +36,12 @@ class HyperHdrUpdaterScreen(Screen):
         <widget name="status" position="10,10" size="780,30" font="Regular;20" halign="left" />
         <widget name="menu" position="10,50" size="780,380" itemHeight="35" scrollbarMode="showOnDemand" enableWrapAround="1" />
 
-        <!-- Rot: Text oben (Höhe 25px), Farbstreifen darunter (Höhe 5px) -->
         <widget name="key_red" position="10,440" size="180,25" font="Regular;18" halign="center" foregroundColor="white" transparent="1" />
         <eLabel position="10,468" size="180,5" backgroundColor="red" />
 
-        <!-- Grün: Text oben (Höhe 25px), Farbstreifen darunter (Höhe 5px) -->
         <widget name="key_green" position="200,440" size="180,25" font="Regular;18" halign="center" foregroundColor="white" transparent="1" />
         <eLabel position="200,468" size="180,5" backgroundColor="green" />
 
-        <!-- Gelb: Text oben (Höhe 25px), Farbstreifen darunter (Höhe 5px) -->
         <widget name="key_yellow" position="390,440" size="220,25" font="Regular;18" halign="center" foregroundColor="white" transparent="1" />
         <eLabel position="390,468" size="220,5" backgroundColor="yellow" />
     </screen>
@@ -52,17 +51,17 @@ class HyperHdrUpdaterScreen(Screen):
         Screen.__init__(self, session)
         self.session = session
         
-        self["status"] = Label("Pruefe GitHub Actions auf verfuegbare .deb Pakete...")
+        self["status"] = Label("Pruefe Abhängigkeiten...")
         self["key_red"] = Label("Beenden")
         self["key_green"] = Label("Aktualisieren")
-        self["key_yellow"] = Label("Backup Restore")
+        self["key_yellow"] = Label("Restore")
         
         self.list = []
         self["menu"] = MenuList(self.list)
         
         self["actions"] = ActionMap(["OkCancelActions", "ColorActions", "DirectionActions"], {
             "ok": self.select_item,
-            "green": self.fetch_runs,
+            "green": self.start_fetch_runs_thread,
             "yellow": self.confirm_restore,
             "red": self.close,
             "cancel": self.close,
@@ -72,7 +71,7 @@ class HyperHdrUpdaterScreen(Screen):
             "pageDown": self.go_page_down
         }, -1)
         
-        self.onLayoutFinish.append(self.fetch_runs)
+        self.onLayoutFinish.append(self.start_check_dependencies_thread)
 
     def go_up(self):
         self["menu"].up()
@@ -86,19 +85,46 @@ class HyperHdrUpdaterScreen(Screen):
     def go_page_down(self):
         self["menu"].pageDown()
 
-    def fetch_runs(self):
-        self["status"].setText("Scanne Webseiten-Seiten 1 & 2 wie im Browser...")
+    # --- THREAD-STEUERUNG & STREAMING ---
+
+    def start_check_dependencies_thread(self):
+        threading.Thread(target=self.check_dependencies_worker).start()
+
+    def check_dependencies_worker(self):
+        global BeautifulSoup
+        if BeautifulSoup is None:
+            self["status"].setText("Installiere python-beautifulsoup4...")
+            os.system("opkg update && opkg install python-beautifulsoup4")
+            try:
+                from bs4 import BeautifulSoup as bs
+                BeautifulSoup = bs
+            except ImportError:
+                self["status"].setText("Fehler: python-beautifulsoup4 konnte nicht installiert werden.")
+                return
+        
+        self.fetch_runs_worker()
+
+    def start_fetch_runs_thread(self):
+        threading.Thread(target=self.fetch_runs_worker).start()
+
+    def add_single_item_to_gui(self, item_tuple):
+        """ Fügt ein einzelnes gefundenes Element sofort der GUI-Liste hinzu """
+        self.list.append(item_tuple)
+        self["menu"].setList(self.list)
+        self["status"].setText("Gefunden: {} Versionen (Suche laeuft weiter...)".format(len(self.list)))
+
+    def fetch_runs_worker(self):
+        self["status"].setText("Scanne GitHub Actions (Lade Eintraege nacheinander)...")
         self.list = []
         self["menu"].setList(self.list)
         
         try:
-            # Abhängigkeiten (xz) sicherstellen
             if subprocess.call(["which", "xz"]) != 0:
                 os.system("opkg update && opkg install xz")
 
             found_runs = []
 
-            # Genau Seite 1 und Seite 2 der GitHub-Webseite parsen
+            # 1. Schritt: Alle Run-IDs schnell sammeln
             for page in (1, 2):
                 page_url = "{}?page={}".format(ACTIONS_URL, page)
                 res = requests.get(page_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
@@ -117,10 +143,11 @@ class HyperHdrUpdaterScreen(Screen):
                                 'url': BASE_URL + href
                             })
 
-            # Gefundene Runs über die API auf das .deb Artifact abfragen
+            # 2. Schritt: Runs einzeln abfragen & sofort in die Liste pushen
             for run in found_runs:
                 run_id = run['id']
                 
+                # Metadata holen
                 run_info_url = "https://api.github.com/repos/awawa-dev/HyperHDR/actions/runs/{}".format(run_id)
                 info_res = requests.get(run_info_url, headers=HEADERS, timeout=5)
                 
@@ -132,6 +159,7 @@ class HyperHdrUpdaterScreen(Screen):
                     title = "Run #{} - {}".format(run_data.get("run_number", run_id), run_data.get("display_title", "")[:30])
                     created_date = run_data.get("created_at", "").replace("T", " ")[:16]
 
+                # Artifacts prüfen
                 artifacts_url = "https://api.github.com/repos/awawa-dev/HyperHDR/actions/runs/{}/artifacts".format(run_id)
                 art_res = requests.get(artifacts_url, headers=HEADERS, timeout=5)
                 
@@ -147,13 +175,16 @@ class HyperHdrUpdaterScreen(Screen):
                     if matching_artifact:
                         download_url = matching_artifact.get("archive_download_url")
                         display_name = "{} ({})".format(title, created_date)
-                        self.list.append((display_name, download_url, run_id))
+                        
+                        # Eintragen, sobald gefunden:
+                        item = (display_name, download_url, run_id)
+                        self.add_single_item_to_gui(item)
 
+            # Abschluss-Meldung
             if self.list:
-                self["menu"].setList(self.list)
-                self["status"].setText("{} aktuelle Versionen gefunden (OK zum Installieren):".format(len(self.list)))
+                self["status"].setText("Suche abgeschlossen. {} Versionen bereit.".format(len(self.list)))
             else:
-                self["status"].setText("Keine passenden Artifacts auf den Web-Seiten 1 & 2 gefunden.")
+                self["status"].setText("Keine passenden Artifacts gefunden.")
                 
         except Exception as e:
             self["status"].setText("Fehler beim Scannen: {}".format(str(e)))
@@ -163,16 +194,21 @@ class HyperHdrUpdaterScreen(Screen):
         if selection and isinstance(selection, tuple):
             display_name, download_url, run_id = selection
             self.session.openWithCallback(
-                lambda confirm: self.start_download_and_install(download_url) if confirm else None,
+                lambda confirm: self.start_download_thread(download_url) if confirm else None,
                 MessageBox,
                 "Moechtest du das Package aus Run ID {} wirklich herunterladen und installieren?".format(run_id),
                 MessageBox.TYPE_YESNO
             )
 
-    def start_download_and_install(self, download_url):
+    def start_download_thread(self, download_url):
+        threading.Thread(target=self.download_and_install_worker, args=(download_url,)).start()
+
+    def download_and_install_worker(self, download_url):
         self["status"].setText("Lade Artifact herunter...")
         
         try:
+            os.system("rm -f /tmp/hyperhdr_update.deb /tmp/debian-binary /tmp/control.tar.* /tmp/data.tar.*")
+
             dl_res = requests.get(download_url, headers=HEADERS, stream=True, timeout=30)
             if dl_res.status_code == 200:
                 file_path = "/tmp/hyperhdr_update.deb"
@@ -192,22 +228,17 @@ class HyperHdrUpdaterScreen(Screen):
             os.system("/etc/init.d/hyperhdr stop 2>/dev/null")
             os.system("killall -9 hyperhdr 2>/dev/null")
 
+            if os.path.exists("/usr/share/hyperhdr"):
+                os.system("rm -rf /usr/share/hyperhdr_s && mkdir -p /usr/share/hyperhdr_s")
+                os.system("cp -r /usr/share/hyperhdr/* /usr/share/hyperhdr_s/ 2>/dev/null")
+
             os.chdir("/tmp")
-            os.system("rm -f debian-binary control.tar.* data.tar.*")
-            
-            # Backup des aktuellen Ordners erstellen vor dem Überschreiben
-            os.system("rm -rf /usr/share/hyperhdr_s && mkdir -p /usr/share/hyperhdr_s")
-            os.system("cp -r /usr/share/hyperhdr/* /usr/share/hyperhdr_s/ 2>/dev/null")
-            
             os.system("ar -x {}".format(deb_path))
             os.system("tar -xf data.tar.* -C /")
 
-            self.session.openWithCallback(
-                self.reboot_system,
-                MessageBox,
-                "Installation von HyperHDR abgeschlossen!\nSoll die Box jetzt neu gestartet werden?",
-                MessageBox.TYPE_YESNO
-            )
+            os.system("rm -f /tmp/hyperhdr_update.deb /tmp/debian-binary /tmp/control.tar.* /tmp/data.tar.*")
+
+            self.restart_service("HyperHDR wurde erfolgreich aktualisiert und neu gestartet!")
         except Exception as e:
             self.session.open(MessageBox, "Installationsfehler: {}".format(str(e)), MessageBox.TYPE_ERROR)
 
@@ -218,38 +249,38 @@ class HyperHdrUpdaterScreen(Screen):
             return
 
         self.session.openWithCallback(
-            self.execute_restore,
+            self.execute_restore_thread,
             MessageBox,
             "Moechtest du das vorherige Backup aus '/usr/share/hyperhdr_s' wirklich wiederherstellen?",
             MessageBox.TYPE_YESNO
         )
 
-    def execute_restore(self, confirm):
+    def execute_restore_thread(self, confirm):
         if confirm:
-            try:
-                self["status"].setText("Stelle Backup wieder her...")
-                os.system("/etc/init.d/hyperhdr stop 2>/dev/null")
-                os.system("killall -9 hyperhdr 2>/dev/null")
-                
-                # Restore durchführen
-                os.system("rm -rf /usr/share/hyperhdr/*")
-                os.system("cp -r /usr/share/hyperhdr_s/* /usr/share/hyperhdr/")
+            threading.Thread(target=self.execute_restore_worker).start()
 
-                self.session.openWithCallback(
-                    self.reboot_system,
-                    MessageBox,
-                    "Backup erfolgreich wiederhergestellt!\nSoll die Box jetzt neu gestartet werden?",
-                    MessageBox.TYPE_YESNO
-                )
-            except Exception as e:
-                self.session.open(MessageBox, "Wiederherstellungsfehler: {}".format(str(e)), MessageBox.TYPE_ERROR)
+    def execute_restore_worker(self):
+        try:
+            self["status"].setText("Stelle Backup wieder her...")
+            os.system("/etc/init.d/hyperhdr stop 2>/dev/null")
+            os.system("killall -9 hyperhdr 2>/dev/null")
+            
+            os.system("rm -rf /usr/share/hyperhdr/*")
+            os.system("cp -r /usr/share/hyperhdr_s/* /usr/share/hyperhdr/")
 
-    def reboot_system(self, answer):
-        if answer:
-            os.system("reboot")
+            self.restart_service("Backup wurde erfolgreich wiederhergestellt und HyperHDR neu gestartet!")
+        except Exception as e:
+            self.session.open(MessageBox, "Wiederherstellungsfehler: {}".format(str(e)), MessageBox.TYPE_ERROR)
+
+    def restart_service(self, message):
+        os.system("/etc/init.d/hyperhdr start")
+        self["status"].setText("HyperHDR laeuft wieder.")
+        self.session.open(MessageBox, message, MessageBox.TYPE_INFO)
+
 
 def main(session, **kwargs):
     session.open(HyperHdrUpdaterScreen)
+
 
 def Plugins(**kwargs):
     return [
