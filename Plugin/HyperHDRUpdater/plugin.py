@@ -15,19 +15,38 @@ try:
 except ImportError:
     BeautifulSoup = None
 
-TOKEN = ""  # Dein GitHub Personal Access Token (falls privat)
+# Pfade zur Token-Datei (Prüft erst Enigma2 Config, dann Plugin-Ordner)
+TOKEN_PATHS = [
+    "/etc/enigma2/github_token.txt",
+    os.path.join(os.path.dirname(__file__), "github_token.txt")
+]
+
+def load_github_token():
+    """Liest den GitHub Token aus einer externen Textdatei ein."""
+    for path in TOKEN_PATHS:
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    token = f.read().strip()
+                    if token:
+                        return token
+            except Exception:
+                pass
+    return ""
+
+TOKEN = load_github_token()
+
 BASE_URL = "https://github.com"
 ACTIONS_URL = "https://github.com/awawa-dev/HyperHDR/actions"
 ARTIFACT_NAME = "HyperHDR-24.0.0~bookworm~beta0-armhf.deb"
 
 HEADERS = {
-    "Authorization": "Bearer {}".format(TOKEN) if TOKEN else "",
     "Accept": "application/vnd.github.v3+json",
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 }
 
-if not TOKEN:
-    HEADERS.pop("Authorization", None)
+if TOKEN:
+    HEADERS["Authorization"] = "Bearer {}".format(TOKEN)
 
 
 class HyperHdrUpdaterScreen(Screen):
@@ -40,7 +59,7 @@ class HyperHdrUpdaterScreen(Screen):
         <eLabel position="10,468" size="180,5" backgroundColor="red" />
 
         <widget name="key_green" position="200,440" size="180,25" font="Regular;18" halign="center" foregroundColor="white" transparent="1" />
-        <eLabel position="200,468" size="180,5" backgroundColor="green" />
+        <eLabel position="200,468" size="200,5" backgroundColor="green" />
 
         <widget name="key_yellow" position="390,440" size="220,25" font="Regular;18" halign="center" foregroundColor="white" transparent="1" />
         <eLabel position="390,468" size="220,5" backgroundColor="yellow" />
